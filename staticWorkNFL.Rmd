@@ -33,6 +33,9 @@ scores_df <- scores %>%
          home3rdPct = home3rdConv / home3rdAtt,
          awayPenPerPlay = awayNumPen / AtotalPlays,
          homePenPerPlay = homeNumPen / HtotalPlays,
+         homePlaysPerMinute = HtotalPlays / homeTOP,
+         awayPlaysPerMinute = AtotalPlays / awayTOP,
+         isFavoriteTheWinner = (homeSpread > 0 & homeWin) | (homeSpread < 0 & !homeWin),
          spread_diff = homeSpread - HminusAScore)
 # Maybe add some differential metrics
 ```
@@ -52,6 +55,8 @@ scores_df %>%
   #geom_bar(stat = "identity") +
   geom_line() +
   geom_point() +
+  geom_hline(aes(yintercept = mean(value)), color = "blue", linetype = "dashed") +
+  geom_smooth(method = lm, se = FALSE) +
   labs(x = "Season", y = "% of games won by home team", title = "Home Field Advantage by Season")
   # Text positioning: https://stackoverflow.com/a/12019601
   #  geom_text(aes(label=round(value, 3)), position=position_dodge(width=0.9), vjust=-0.25)
@@ -73,13 +78,11 @@ ggplot(scores_df, aes(x = homeTOP, y = HminusAScore)) +
 # Remove pick-em games
 scores_df %>%
   filter(homeSpread != 0) %>%
-  mutate(isFavoriteTheWinner = (homeSpread > 0 & homeWin) | (homeSpread < 0 & !homeWin) ) %>%
   ggplot(aes(x = isFavoriteTheWinner)) +
   geom_bar(aes(y = stat(count / sum(count)), fill = homeWin)) # Proportion from https://ggplot2.tidyverse.org/reference/stat.html
 
 scores_df %>%
   filter(homeSpread != 0) %>%
-  mutate(isFavoriteTheWinner = as.numeric((homeSpread > 0 & homeWin) | (homeSpread < 0 & !homeWin) )) %>%
   select(season, isFavoriteTheWinner) %>%
   group_by(season) %>%
   summarize(vegasCorrectPct = sum(isFavoriteTheWinner) / n()) %>%
@@ -104,6 +107,7 @@ ggplot(scores_df, aes(x = spread_diff)) +
   geom_density(kernel = "gaussian", fill = "blue", alpha = 0.5, color = "blue") +
   # Referenced code: https://stackoverflow.com/a/13609916
   stat_function(fun = dnorm, args = list(mean = mean(scores_df$spread_diff), sd = sd(scores_df$spread_diff)), color = "orange") +
+  geom_vline(aes(xintercept = mean(spread_diff)), linetype = "dashed") +
   labs(title = "Distribution of Vegas Spread Error", x = "Vegas Spread - Actual Spread", y = "Density")
 ```
 
@@ -128,16 +132,12 @@ scores_df %>%
 
 # Plays per minute
 scores_df %>%
-  mutate(homePlaysPerMinute = HtotalPlays / homeTOP,
-         awayPlaysPerMinute = AtotalPlays / awayTOP) %>%
   ggplot(aes(x = homePlaysPerMinute, y = HminusAScore)) +
   geom_point() +
   geom_smooth() +
   labs(title = "Score Differential vs. Tempo (Home)", x = "Plays per Minute", y = "Score Differential")
 
 scores_df %>%
-  mutate(homePlaysPerMinute = HtotalPlays / homeTOP,
-         awayPlaysPerMinute = AtotalPlays / awayTOP) %>%
   ggplot(aes(x = awayPlaysPerMinute, y = -HminusAScore)) +
   geom_point() +
   geom_smooth() +
@@ -189,7 +189,8 @@ scores_df %>%
   summarize(avgRushYds = mean(avgRushYds), avgPassYds = mean(avgPassYds)) %>%
   pivot_longer(2:3, names_to = "type", values_to = "value") %>%
   ggplot(aes(x = season, y = value, fill = type)) +
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity") +
+  labs(title = "Average Yards Gained by Season", x = "Season", y = "Average Yards Gained")
 ```
 
 
