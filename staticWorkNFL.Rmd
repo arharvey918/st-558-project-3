@@ -162,7 +162,17 @@ scores_df %>%
 ```
 
 
-## Predictions
+## Unsupervised Learning
+
+### PCA with biplot
+
+```{r}
+(principal_components <- prcomp(select(scores_df, homeTOP, homeYPC, homeYPA, awayYPC, awayYPA, HtotalPlays, AtotalPlays) , scale = TRUE))
+biplot(principal_components, xlabs = rep(".", nrow(scores_df)), cex = 1.5)
+```
+
+## Supervised Learning
 
 What strategy will result in a win?
 
+Can I beat the Vegas predictor with simple, pre-game metrics?
