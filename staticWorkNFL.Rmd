@@ -20,9 +20,10 @@ scores <- read_csv("scoresFull.csv")
 
 scores_df <- scores %>%
   filter(week %in% as.character(1:17)) %>%  # Regular season only
-  mutate(homeWin = (HFinal > AFinal)) %>%
   discard(is.character) %>%
-  mutate(awayYPC = awayRushYds / awayRushAtt,
+  mutate(awayWin = (AFinal > HFinal),
+         homeWin = (HFinal > AFinal),
+         awayYPC = awayRushYds / awayRushAtt,
          homeYPC = homeRushYds / homeRushAtt,
          awayYPA = awayPassYds / awayPassAtt,
          homeYPA = homePassYds / homePassAtt,
@@ -31,11 +32,27 @@ scores_df <- scores %>%
          away3rdPct = away3rdConv / away3rdAtt,
          home3rdPct = home3rdConv / home3rdAtt,
          awayPenPerPlay = awayNumPen / AtotalPlays,
-         homePenPerPlay = homeNumPen / HtotalPlays)
+         homePenPerPlay = homeNumPen / HtotalPlays,
+         spread_diff = homeSpread - HminusAScore)
 # Maybe add some differential metrics
 ```
 
 ## Data Exploration
+
+### What is home-field advantage?
+
+```{r}
+scores_df %>%
+  select(homeWin, season) %>%
+  group_by(season, homeWin) %>%
+  summarize(value = n()) %>%
+  mutate(value = value / sum(value)) %>%
+  ggplot(aes(x = season, y = value, fill = homeWin)) +
+  geom_bar(stat = "identity")
+  # Text positioning: https://stackoverflow.com/a/12019601
+  #  geom_text(aes(label=round(value, 3)), position=position_dodge(width=0.9), vjust=-0.25)
+```
+
 
 ### How does time of possession relate to margin of victory?
 
@@ -63,16 +80,87 @@ scores_df %>%
   summarize(vegasCorrectPct = sum(isFavoriteTheWinner) / n()) %>%
   ggplot(aes(x = season, y = vegasCorrectPct)) + 
   geom_line() +
+  geom_point() +
   geom_smooth(method = lm)
 ```
+
+### How close is the spread to the actual point differential?
+
+```{r}
+# RMSE of predicted spread vs. actual
+scores_df %>%
+  group_by(season) %>%
+  summarise(spread_rmse = sqrt(mean(spread_diff^2)))
+
+# Histogram of predicted spread - actual
+ggplot(scores_df, aes(x = spread_diff)) +
+  geom_histogram(binwidth = 3, aes(y = stat(density)), alpha = 0.5) +
+  geom_density(kernel = "gaussian", fill = "blue", alpha = 0.5, color = "blue") +
+  # Referenced code: https://stackoverflow.com/a/13609916
+  stat_function(fun = dnorm, args = list(mean = mean(scores_df$spread_diff), sd = sd(scores_df$spread_diff)), color = "orange")
+```
+
 
 ### How does tempo relate to margin of victory?
 
 Maybe total plays divided by TOP will reflect tempo?
 
+```{r tempo-vs-margin-of-victory}
+# Total plays
+scores_df %>%
+  ggplot(aes(x = HtotalPlays, y = HminusAScore)) +
+  geom_point() +
+  geom_smooth()
+
+scores_df %>%
+  ggplot(aes(x = AtotalPlays, y = -HminusAScore)) +
+  geom_point() +
+  geom_smooth()
+
+# Plays per minute
+scores_df %>%
+  mutate(homePlaysPerMinute = HtotalPlays / homeTOP,
+         awayPlaysPerMinute = AtotalPlays / awayTOP) %>%
+  ggplot(aes(x = homePlaysPerMinute, y = HminusAScore)) +
+  geom_point() +
+  geom_smooth()
+
+scores_df %>%
+  mutate(homePlaysPerMinute = HtotalPlays / homeTOP,
+         awayPlaysPerMinute = AtotalPlays / awayTOP) %>%
+  ggplot(aes(x = awayPlaysPerMinute, y = -HminusAScore)) +
+  geom_point() +
+  geom_smooth()
+```
+
+
 ### How do YAC and YPA relate to each other?
 
-Also color with win/loss
+```{r}
+scores_df %>%
+  ggplot(aes(x = homeYPC, y = homeYPA, color = homeWin)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = lm)
+
+scores_df %>%
+  ggplot(aes(x = awayYPC, y = awayYPA, color = awayWin)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = lm)
+```
+
+### Is there a relationship between season and rush/pass yards?
+
+```{r}
+scores_df %>%
+  mutate(avgRushYds = (homeRushYds + awayRushYds) / 2,
+         avgPassYds = (homePassYds + awayPassYds) / 2) %>%
+  group_by(season) %>%
+  summarize(avgRushYds = mean(avgRushYds), avgPassYds = mean(avgPassYds)) %>%
+  pivot_longer(2:3, names_to = "type", values_to = "value") %>%
+  ggplot(aes(x = season, y = value, fill = type)) +
+  geom_bar(stat = "identity")
+```
+
 
 ## Predictions
 
