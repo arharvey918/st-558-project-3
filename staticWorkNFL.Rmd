@@ -1,0 +1,80 @@
+---
+title: "NFL Data Analysis"
+author: "Avy Harvey"
+date: "7/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data
+
+Data comes from data sets provided in ST 558, augmented with some additional calculated metrics. The games are filtered to include only regular season games.
+
+```{r}
+library(tidyverse)
+
+scores <- read_csv("scoresFull.csv")
+
+scores_df <- scores %>%
+  filter(week %in% as.character(1:17)) %>%  # Regular season only
+  mutate(homeWin = (HFinal > AFinal)) %>%
+  discard(is.character) %>%
+  mutate(awayYPC = awayRushYds / awayRushAtt,
+         homeYPC = homeRushYds / homeRushAtt,
+         awayYPA = awayPassYds / awayPassAtt,
+         homeYPA = homePassYds / homePassAtt,
+         awayTPP = Aturnovers / AtotalPlays,
+         homeTPP = Hturnovers / HtotalPlays,
+         away3rdPct = away3rdConv / away3rdAtt,
+         home3rdPct = home3rdConv / home3rdAtt,
+         awayPenPerPlay = awayNumPen / AtotalPlays,
+         homePenPerPlay = homeNumPen / HtotalPlays)
+# Maybe add some differential metrics
+```
+
+## Data Exploration
+
+### How does time of possession relate to margin of victory?
+
+```{r}
+ggplot(scores_df, aes(x = homeTOP, y = HminusAScore)) +
+  geom_point(aes(color = season), alpha = 0.5) +
+  geom_smooth(method = lm)
+```
+
+### How often does the spread predict the winner?
+
+```{r}
+# Remove pick-em games
+scores_df %>%
+  filter(homeSpread != 0) %>%
+  mutate(isFavoriteTheWinner = (homeSpread > 0 & homeWin) | (homeSpread < 0 & !homeWin) ) %>%
+  ggplot(aes(x = isFavoriteTheWinner)) +
+  geom_bar(aes(y = stat(count / sum(count)), fill = homeWin)) # Proportion from https://ggplot2.tidyverse.org/reference/stat.html
+
+scores_df %>%
+  filter(homeSpread != 0) %>%
+  mutate(isFavoriteTheWinner = as.numeric((homeSpread > 0 & homeWin) | (homeSpread < 0 & !homeWin) )) %>%
+  select(season, isFavoriteTheWinner) %>%
+  group_by(season) %>%
+  summarize(vegasCorrectPct = sum(isFavoriteTheWinner) / n()) %>%
+  ggplot(aes(x = season, y = vegasCorrectPct)) + 
+  geom_line() +
+  geom_smooth(method = lm)
+```
+
+### How does tempo relate to margin of victory?
+
+Maybe total plays divided by TOP will reflect tempo?
+
+### How do YAC and YPA relate to each other?
+
+Also color with win/loss
+
+## Predictions
+
+What strategy will result in a win?
+
