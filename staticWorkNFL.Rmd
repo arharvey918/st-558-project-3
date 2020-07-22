@@ -47,8 +47,12 @@ scores_df %>%
   group_by(season, homeWin) %>%
   summarize(value = n()) %>%
   mutate(value = value / sum(value)) %>%
-  ggplot(aes(x = season, y = value, fill = homeWin)) +
-  geom_bar(stat = "identity")
+  filter(homeWin == TRUE) %>%
+  ggplot(aes(x = season, y = value)) +
+  #geom_bar(stat = "identity") +
+  geom_line() +
+  geom_point() +
+  labs(x = "Season", y = "% of games won by home team", title = "Home Field Advantage by Season")
   # Text positioning: https://stackoverflow.com/a/12019601
   #  geom_text(aes(label=round(value, 3)), position=position_dodge(width=0.9), vjust=-0.25)
 ```
@@ -59,7 +63,8 @@ scores_df %>%
 ```{r}
 ggplot(scores_df, aes(x = homeTOP, y = HminusAScore)) +
   geom_point(aes(color = season), alpha = 0.5) +
-  geom_smooth(method = lm)
+  geom_smooth(method = lm) +
+  labs(title = "Score Differential vs. TOP", x = "TOP (Home)", y = "Score Differential (Home)")
 ```
 
 ### How often does the spread predict the winner?
@@ -81,7 +86,8 @@ scores_df %>%
   ggplot(aes(x = season, y = vegasCorrectPct)) + 
   geom_line() +
   geom_point() +
-  geom_smooth(method = lm)
+  geom_hline(aes(yintercept = mean(vegasCorrectPct)), color = "blue", linetype="dashed") +
+  labs(title = "Vegas Favorite Win % by Season", x = "Season", y = "Vegas Favorite Win %")
 ```
 
 ### How close is the spread to the actual point differential?
@@ -97,7 +103,8 @@ ggplot(scores_df, aes(x = spread_diff)) +
   geom_histogram(binwidth = 3, aes(y = stat(density)), alpha = 0.5) +
   geom_density(kernel = "gaussian", fill = "blue", alpha = 0.5, color = "blue") +
   # Referenced code: https://stackoverflow.com/a/13609916
-  stat_function(fun = dnorm, args = list(mean = mean(scores_df$spread_diff), sd = sd(scores_df$spread_diff)), color = "orange")
+  stat_function(fun = dnorm, args = list(mean = mean(scores_df$spread_diff), sd = sd(scores_df$spread_diff)), color = "orange") +
+  labs(title = "Distribution of Vegas Spread Error", x = "Vegas Spread - Actual Spread", y = "Density")
 ```
 
 
@@ -110,12 +117,14 @@ Maybe total plays divided by TOP will reflect tempo?
 scores_df %>%
   ggplot(aes(x = HtotalPlays, y = HminusAScore)) +
   geom_point() +
-  geom_smooth()
+  geom_smooth() +
+  labs(title = "Score Differential vs. Total Plays (Home)", x = "Total Plays", y = "Score Differential")
 
 scores_df %>%
   ggplot(aes(x = AtotalPlays, y = -HminusAScore)) +
   geom_point() +
-  geom_smooth()
+  geom_smooth() +
+  labs(title = "Score Differential vs. Total Plays (Away)", x = "Total Plays", y = "Score Differential")
 
 # Plays per minute
 scores_df %>%
@@ -123,14 +132,16 @@ scores_df %>%
          awayPlaysPerMinute = AtotalPlays / awayTOP) %>%
   ggplot(aes(x = homePlaysPerMinute, y = HminusAScore)) +
   geom_point() +
-  geom_smooth()
+  geom_smooth() +
+  labs(title = "Score Differential vs. Tempo (Home)", x = "Plays per Minute", y = "Score Differential")
 
 scores_df %>%
   mutate(homePlaysPerMinute = HtotalPlays / homeTOP,
          awayPlaysPerMinute = AtotalPlays / awayTOP) %>%
   ggplot(aes(x = awayPlaysPerMinute, y = -HminusAScore)) +
   geom_point() +
-  geom_smooth()
+  geom_smooth() +
+  labs(title = "Score Differential vs. Tempo (Away)", x = "Plays per Minute", y = "Score Differential")
 ```
 
 
@@ -146,6 +157,26 @@ scores_df %>%
   ggplot(aes(x = awayYPC, y = awayYPA, color = awayWin)) +
   geom_point(alpha = 0.3) +
   geom_smooth(method = lm)
+
+scores_df %>%
+  ggplot(aes(x = homeYPA, color = homeWin, fill = homeWin)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Distribution of Yards per Passing Attempt (Home)", x = "Yards Per Attempt", y = "Density")
+
+scores_df %>%
+  ggplot(aes(x = awayYPA, color = awayWin, fill = awayWin)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Distribution of Yards per Passing Attempt (Away)", x = "Yards Per Attempt", y = "Density")
+
+scores_df %>%
+  ggplot(aes(x = homeYPC, color = homeWin, fill = homeWin)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Distribution of Yards per Carry (Home)", x = "Yards Per Carry", y = "Density")
+
+scores_df %>%
+  ggplot(aes(x = awayYPC, color = awayWin, fill = awayWin)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Distribution of Yards per Carry (Away)", x = "Yards Per Carry", y = "Density")
 ```
 
 ### Is there a relationship between season and rush/pass yards?
