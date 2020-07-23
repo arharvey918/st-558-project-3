@@ -20,6 +20,7 @@ scores <- read_csv("scoresFull.csv")
 
 scores_df <- scores %>%
   filter(week %in% as.character(1:17)) %>%  # Regular season only
+  mutate(day = as.factor(day)) %>%
   discard(is.character) %>%
   mutate(awayWin = (AFinal > HFinal),
          homeWin = (HFinal > AFinal),
@@ -60,6 +61,12 @@ scores_df %>%
   labs(x = "Season", y = "% of games won by home team", title = "Home Field Advantage by Season")
   # Text positioning: https://stackoverflow.com/a/12019601
   #  geom_text(aes(label=round(value, 3)), position=position_dodge(width=0.9), vjust=-0.25)
+
+scores_df %>%
+  select(homeWin, day) %>%
+  group_by(day, homeWin) %>%
+  summarize(value = n()) %>%
+  mutate(value = value / sum(value))
 ```
 
 
@@ -198,6 +205,8 @@ scores_df %>%
 
 ### PCA with biplot
 
+TODO: determine which variables to allow for selection
+
 ```{r}
 (principal_components <- prcomp(select(scores_df, homeTOP, homeYPC, homeYPA, awayYPC, awayYPA, HtotalPlays, AtotalPlays) , scale = TRUE))
 biplot(principal_components, xlabs = rep(".", nrow(scores_df)), cex = 1.5)
@@ -205,6 +214,17 @@ biplot(principal_components, xlabs = rep(".", nrow(scores_df)), cex = 1.5)
 
 ## Supervised Learning
 
-What strategy will result in a win?
+TODO: determine which variables to allow for selection
+
+Allow test/train split modification?
+
+What strategy/metrics will result in a win?
+
+- Random Forest (mtry)
+  - Allow option for cross validation
+- Boosting (?)
+  - Allow option for OOB estimates? Maybe just cross validation since that's what the others are.
+- Logistic Regression (Lasso, penalty)
+  - Allow option for cross validation
 
 Can I beat the Vegas predictor with simple, pre-game metrics?
