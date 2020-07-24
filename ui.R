@@ -33,7 +33,18 @@ dashboardPage(
             tabItem(
                 tabName = "home",
                 h2("Welcome!"),
-                p("This is some information about this application.")
+                p("This R Shiny application can be used to perform basic, historical NFL data analysis."),
+                p("There are four main sections:"),
+                tags$ul(
+                    tags$li(span(tags$strong("View Data"), " contains a paginated data table")),
+                    tags$li(span(tags$strong("Explore Data"), " has interactive plots that explore different aspects of the data")),
+                    tags$li(span(tags$strong("Unsupervised Learning"), " lets you run and visualize principal components analysis")),
+                    tags$li(span(tags$strong("Build Models"), " contains interactive supervised learning tools")),
+                ),
+                h3("Data"),
+                p("The source data used by this application is the ", span("scoresFull.csv"), " data set provided in ST 558. It contains data for NFL games from 2002 to 2014. This modified version only includes regular season games, and I also added some calculated variables to the end of the data set that are used in data exploration and model building. Additional data can be found at ", a("https://www.pro-football-reference.com/", href="https://www.pro-football-reference.com/"), "."),
+                h3("About"),
+                p("This R Shiny application was created by Avy Harvey in July 2020 for Project 3 of ST 558 at NC State.")
             ),
             
             ### Data viewer content ###
