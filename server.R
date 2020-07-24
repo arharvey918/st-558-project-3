@@ -168,6 +168,9 @@ shinyServer(function(input, output, session) {
             group_by(season) %>%
             summarise(spread_rmse = sqrt(mean(spread_diff^2))) %>%
             rename(Season = season, `Spread RMSE` = spread_rmse)
+
+        # Handler for data download
+        output$downloadSpreadRmseData <- get_download_handler(df)
         
         df
     })
@@ -287,4 +290,39 @@ shinyServer(function(input, output, session) {
         ggplotly(p) %>%
             layout()
     })
+    
+    output$customSummaryTable <- renderTable({
+        # Code referenced from HW7 key
+        df <- apply(scores_df %>% select(input$customSummaryTableVar), 2, summary)
+        
+        # Handler for data download
+        output$downloadCustomSummaryData <- get_download_handler(df)
+        
+        df
+    }, rownames = TRUE)
+    
+    # Variable 1 filter for custom plot
+    updateSelectizeInput(session, "customSummaryTableVar",
+                         choices = names(scores_df %>% select_if(is.numeric)))
+    
+    output$customPlot <- renderPlotly({
+        # Handler for data download
+        output$downloadCustomData <- get_download_handler(scores_df)
+        
+        # Create plot
+        p <- ggplot(scores_df, aes_string(y = input$customPlotVar1, x = input$customPlotVar2)) +
+            geom_point()
+        
+        # View it with plotly
+        ggplotly(p) %>%
+            layout()
+    })
+    
+    # Variable 1 filter for custom plot
+    updateSelectizeInput(session, "customPlotVar1",
+                         choices = names(scores_df))
+    
+    # Variable 2 filter for custom plot
+    updateSelectizeInput(session, "customPlotVar2",
+                         choices = names(scores_df))
 })

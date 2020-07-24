@@ -110,7 +110,8 @@ dashboardPage(
                         width = 2,
                         h4("Spread RMSE by Season"),
                         withMathJax(helpText("RMSE is calculated as: $$\\sqrt{\\sum_{i=1}^{n}{\\cfrac{(\\text{spread} - \\text{actual})^2}{n}}}$$")),
-                        tableOutput("spreadRmseTable")
+                        tableOutput("spreadRmseTable"),
+                        downloadButton("downloadSpreadRmseData", "Download Table Data")
                     )
                 ),
                 
@@ -164,7 +165,30 @@ dashboardPage(
                         plotlyOutput("ypaPlot"),
                         downloadButton("downloadYpaData", "Download Plot Data")
                     ),
+                ),
+                
+                h3("Custom Analysis"),
+                fluidRow(
+                    # 5-number summary
+                    box(
+                        width = 4,
+                        h4("Variable Summary"),
+                        selectizeInput("customSummaryTableVar", "Variable", choices = c("Loading options...")),
+                        tableOutput("customSummaryTable"),
+                        downloadButton("downloadCustomSummaryData", "Download Table Data")
+                    ),
+                    
+                    # Scatterplot
+                    box(
+                        width = 8,
+                        h4("Scatterplot"),
+                        selectizeInput("customPlotVar1", "Y Variable", choices = c("Loading options...")),
+                        selectizeInput("customPlotVar2", "X Variable", choices = c("Loading options...")),
+                        plotlyOutput("customPlot"),
+                        downloadButton("downloadCustomData", "Download Plot Data")
+                    )
                 )
+                
             ),
             
             ### Unsupervised learning content ###
