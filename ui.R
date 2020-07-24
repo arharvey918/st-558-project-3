@@ -10,6 +10,7 @@
 library(shiny)
 library(shinydashboard)
 library(DT)
+library(plotly)
 
 dashboardPage(
     # Header
@@ -51,14 +52,28 @@ dashboardPage(
             tabItem(
                 tabName = "view-data",
                 fluidRow(
+                    box(width = 4,
+                        h3("Filters"),
+                        
+                        # Need separator: https://stackoverflow.com/a/28223518
+                         sliderInput("viewDataSeasonRange", label = "Season Range", min = 2002,
+                                     max = 2014, value = c(2002, 2014), sep = "")
+                       )
+                ),
+                
+                # Data table
+                fluidRow(
                     column(12,
+                           h3(textOutput("viewDataHeader")),
                            dataTableOutput('table')
                     )
                 ),
+                
+                # Download button
                 fluidRow(
                     column(1,
                         # Reference: https://shiny.rstudio.com/articles/download.html
-                        downloadButton("downloadData", "Download All Data", style="margin-top: 1rem;")
+                        downloadButton("downloadData", "Download Data", style="margin-top: 1rem;")
                     )
                 )
             ),
@@ -66,23 +81,89 @@ dashboardPage(
             ### Data explorer content ###
             tabItem(
                 tabName = "explore-data",
-                h2("Explore data content"),
+                
+                h3("Betting Lines"),
                 fluidRow(
+                    # Vegas Favorite Win % by Season
                     box(
-                        sliderInput("bins",
-                                    "Number of bins:",
-                                    min = 1,
-                                    max = 50,
-                                    value = 30)
+                        width = 5,
+                        plotlyOutput("vegasPickPctPlot"),
+                        downloadButton("downloadVegasPickPctData", "Download Plot Data")
                     ),
+                    
+                    # Distribution of Vegas Spread Error
                     box(
-                        plotOutput("distPlot")
+                        width = 5,
+                        checkboxInput("spreadErrorPlotEnableSeasonFilter", "Filter by Season"),
+                        conditionalPanel(
+                            condition = "input.spreadErrorPlotEnableSeasonFilter",
+                            selectizeInput("spreadErrorPlotSeason", "Season", choices = c("Loading options...")),
+                        ),
+                        plotlyOutput("spreadErrorPlot"),
+                        downloadButton("downloadSpreadErrorData", "Download Plot Data"),
+                        span(checkboxInput("spreadErrorPlotShowNormal", "Show normal curve"), style = "display: inline-block; margin-left: 1rem;"),
+                        span(checkboxInput("spreadErrorPlotShowMean", "Show mean"), style = "display: inline-block; margin-left: 1rem;")
+                    ),
+                    
+                    # Spread RMSE by season
+                    box(
+                        width = 2,
+                        h4("Spread RMSE by Season"),
+                        withMathJax(helpText("RMSE is calculated as: $$\\sqrt{\\sum_{i=1}^{n}{\\cfrac{(\\text{spread} - \\text{actual})^2}{n}}}$$")),
+                        tableOutput("spreadRmseTable")
                     )
                 ),
+                
+                h3("Time of Possession and Tempo"),
                 fluidRow(
+                    # Score differential vs. TOP
                     box(
-                        plotlyOutput("vegasPickPct")
+                        width = 4,
+                        plotlyOutput("scoreDiffVsTopPlot"),
+                        downloadButton("downloadScoreDiffVsTopData", "Download Plot Data")
+                    ),
+                    
+                    # Score differential vs. total plays
+                    box(
+                        width = 4,
+                        radioButtons("scoreDiffVsTopPlotHomeAway", "Team", selected = "Home", choices = c("Home", "Away"), inline = TRUE),
+                        plotlyOutput("scoreDiffVsPlaysPlot"),
+                        downloadButton("downloadScoreDiffVsPlaysData", "Download Plot Data")
+                    ),
+                    
+                    # Score differential vs. tempo
+                    box(
+                        width = 4,
+                        radioButtons("scoreDiffVsTempoPlotHomeAway", "Team", selected = "Home", choices = c("Home", "Away"), inline = TRUE),
+                        plotlyOutput("scoreDiffVsTempoPlot"),
+                        downloadButton("downloadScoreDiffVsTempoData", "Download Plot Data")
                     )
+                ),
+                
+                h3("Rushing and Passing Yards"),
+                fluidRow(
+                    # Average Yards by Season
+                    box(
+                        width = 4,
+                        plotlyOutput("avgYardsPlot"),
+                        downloadButton("downloadAvgYardsData", "Download Plot Data")
+                    ),
+                    
+                    # Yards per Carry
+                    box(
+                        width = 4,
+                        radioButtons("ypcPlotHomeAway", "Team", selected = "Home", choices = c("Home", "Away"), inline = TRUE),
+                        plotlyOutput("ypcPlot"),
+                        downloadButton("downloadYpcData", "Download Plot Data")
+                    ),
+                    
+                    # Yards per Passing Attempt
+                    box(
+                        width = 4,
+                        radioButtons("ypaPlotHomeAway", "Team", selected = "Home", choices = c("Home", "Away"), inline = TRUE),
+                        plotlyOutput("ypaPlot"),
+                        downloadButton("downloadYpaData", "Download Plot Data")
+                    ),
                 )
             ),
             
