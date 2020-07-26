@@ -7,6 +7,7 @@
 #    http://shiny.rstudio.com/
 #
 
+# Packages to load
 library(shiny)
 library(shinydashboard)
 library(DT)
@@ -15,7 +16,7 @@ library(plotly)
 dashboardPage(
     # Header
     dashboardHeader(title = "NFL Data Analyzer"),
-    
+
     # Sidebar content
     dashboardSidebar(
         sidebarMenu(
@@ -26,7 +27,7 @@ dashboardPage(
             menuItem("Build Models", tabName = "supervised-learning", icon = icon("chalkboard-teacher"))
         )
     ),
-    
+
     ### Main body content ###
     dashboardBody(
         tabItems(
@@ -47,20 +48,20 @@ dashboardPage(
                 h3("About"),
                 p("This R Shiny application was created by Avy Harvey in July 2020 for Project 3 of ST 558 at NC State.")
             ),
-            
+
             ### Data viewer content ###
             tabItem(
                 tabName = "view-data",
                 fluidRow(
                     box(width = 4,
                         h3("Filters"),
-                        
-                        # Need separator: https://stackoverflow.com/a/28223518
+
+                        # Needed separator so years don't show up weird: https://stackoverflow.com/a/28223518
                          sliderInput("viewDataSeasonRange", label = "Season Range", min = 2002,
                                      max = 2014, value = c(2002, 2014), sep = "")
                        )
                 ),
-                
+
                 # Data table
                 fluidRow(
                     column(12,
@@ -68,7 +69,7 @@ dashboardPage(
                            dataTableOutput('table')
                     )
                 ),
-                
+
                 # Download button
                 fluidRow(
                     column(1,
@@ -77,11 +78,15 @@ dashboardPage(
                     )
                 )
             ),
-            
+
             ### Data explorer content ###
             tabItem(
                 tabName = "explore-data",
-                
+
+                h2("Explore Data"),
+                p("On this page, you can interact with several pre-created plots or do your own basic analyses in the Custom Analysis section at the bottom."),
+                p("Due to the volume of graphical content, this page may take several seconds to load."),
+
                 h3("Betting Lines"),
                 fluidRow(
                     # Vegas Favorite Win % by Season
@@ -90,7 +95,7 @@ dashboardPage(
                         plotlyOutput("vegasPickPctPlot"),
                         downloadButton("downloadVegasPickPctData", "Download Plot Data")
                     ),
-                    
+
                     # Distribution of Vegas Spread Error
                     box(
                         width = 5,
@@ -101,20 +106,24 @@ dashboardPage(
                         ),
                         plotlyOutput("spreadErrorPlot"),
                         downloadButton("downloadSpreadErrorData", "Download Plot Data"),
+
+                        # Options for customizing plot
                         span(checkboxInput("spreadErrorPlotShowNormal", "Show normal curve"), style = "display: inline-block; margin-left: 1rem;"),
                         span(checkboxInput("spreadErrorPlotShowMean", "Show mean"), style = "display: inline-block; margin-left: 1rem;")
                     ),
-                    
+
                     # Spread RMSE by season
                     box(
                         width = 2,
                         h4("Spread RMSE by Season"),
+
+                        # Formula for RMSE
                         withMathJax(helpText("RMSE is calculated as: $$\\sqrt{\\sum_{i=1}^{n}{\\cfrac{(\\text{spread} - \\text{actual})^2}{n}}}$$")),
                         tableOutput("spreadRmseTable"),
                         downloadButton("downloadSpreadRmseData", "Download Table Data")
                     )
                 ),
-                
+
                 h3("Time of Possession and Tempo"),
                 fluidRow(
                     # Score differential vs. TOP
@@ -123,7 +132,7 @@ dashboardPage(
                         plotlyOutput("scoreDiffVsTopPlot"),
                         downloadButton("downloadScoreDiffVsTopData", "Download Plot Data")
                     ),
-                    
+
                     # Score differential vs. total plays
                     box(
                         width = 4,
@@ -131,7 +140,7 @@ dashboardPage(
                         plotlyOutput("scoreDiffVsPlaysPlot"),
                         downloadButton("downloadScoreDiffVsPlaysData", "Download Plot Data")
                     ),
-                    
+
                     # Score differential vs. tempo
                     box(
                         width = 4,
@@ -140,7 +149,7 @@ dashboardPage(
                         downloadButton("downloadScoreDiffVsTempoData", "Download Plot Data")
                     )
                 ),
-                
+
                 h3("Rushing and Passing Yards"),
                 fluidRow(
                     # Average Yards by Season
@@ -149,7 +158,7 @@ dashboardPage(
                         plotlyOutput("avgYardsPlot"),
                         downloadButton("downloadAvgYardsData", "Download Plot Data")
                     ),
-                    
+
                     # Yards per Carry
                     box(
                         width = 4,
@@ -157,7 +166,7 @@ dashboardPage(
                         plotlyOutput("ypcPlot"),
                         downloadButton("downloadYpcData", "Download Plot Data")
                     ),
-                    
+
                     # Yards per Passing Attempt
                     box(
                         width = 4,
@@ -166,7 +175,7 @@ dashboardPage(
                         downloadButton("downloadYpaData", "Download Plot Data")
                     ),
                 ),
-                
+
                 h3("Custom Analysis"),
                 fluidRow(
                     # 5-number summary
@@ -177,7 +186,7 @@ dashboardPage(
                         tableOutput("customSummaryTable"),
                         downloadButton("downloadCustomSummaryData", "Download Table Data")
                     ),
-                    
+
                     # Scatterplot
                     box(
                         width = 8,
@@ -188,9 +197,9 @@ dashboardPage(
                         downloadButton("downloadCustomData", "Download Plot Data")
                     )
                 )
-                
+
             ),
-            
+
             ### Unsupervised learning content ###
             tabItem(
                 tabName = "unsupervised-learning",
@@ -214,7 +223,7 @@ dashboardPage(
                                          downloadButton("downloadPcaPlotData", "Download Plot Data")
                         )
                     ),
-                    
+
                     box(
                         h3("Variable Loadings"),
                         conditionalPanel("input.pcaVars.length < 2",
@@ -227,13 +236,13 @@ dashboardPage(
                     )
                 )
             ),
-            
+
             ### Supervised learning content ###
             tabItem(
                 tabName = "supervised-learning",
                 h2("Build Models"),
                 p("On this page, you can build machine learning models to make predictions about whether a team will win or not based on certain predictor variables. Note that any variables in the data that are outcome-related, such as `homeWin`, `HminusAScore`, `spreadDiff`, and others are not included in the available variables list."),
-                
+
                 # Classification tree
                 h2("Classification Tree"),
                 fluidRow(
@@ -241,14 +250,14 @@ dashboardPage(
                         h3("Training Parameters"),
                         actionButton("treeUseSuggestedVarsBtn", "Use Suggested Variables"),
                         actionButton("treeUseAllVarsBtn", "Use All Variables"),
-                        selectizeInput("treeVars", "Variables", choices = c("Loading options..."), multiple = TRUE),   
+                        selectizeInput("treeVars", "Variables", choices = c("Loading options..."), multiple = TRUE),
                         numericInput("treeCp", "Complexity parameter for pruning",
                                      min = 0, value = 0.02),
                         sliderInput("treeCvFolds", "Number of folds to use in cross validation",
                                     min = 3, max = 10, value = 3),
                         actionButton("treeTrainButton", "Train Model", icon = icon("cogs"), class = "btn-primary", style = "color: #fff;")
                     ),
-                    
+
                     box(
                         h3("Results"),
                         conditionalPanel(
@@ -261,7 +270,7 @@ dashboardPage(
                             p("Variables used: ", uiOutput("treeVarsText")),
                             p(span("Number of variables randomly sampled at each split: ", textOutput("treeMtryText", inline = TRUE))),
                             p(span("Number of cross validation folds: ", textOutput("treeCvFoldsText", inline = TRUE))),
-                            
+
                             h4("Accuracy"),
                             p("Cross-validation accuracy: ", textOutput("treeCvAccuracyText", inline = TRUE)),
                             p("Holdout test data accuracy: ", textOutput("treeTestAccuracyText", inline = TRUE)),
@@ -297,14 +306,14 @@ dashboardPage(
                         h3("Training Parameters"),
                         actionButton("randomForestUseSuggestedVarsBtn", "Use Suggested Variables"),
                         actionButton("randomForestUseAllVarsBtn", "Use All Variables"),
-                        selectizeInput("randomForestVars", "Variables", choices = c("Loading options..."), multiple = TRUE),   
+                        selectizeInput("randomForestVars", "Variables", choices = c("Loading options..."), multiple = TRUE),
                         sliderInput("randomForestMtry", "Number of variables to randomly sample at each split",
                                     min = 1, max = 10, value = 3),
                         sliderInput("randomForestCvFolds", "Number of folds to use in cross validation",
                                     min = 3, max = 10, value = 3),
                         actionButton("randomForestTrainButton", "Train Model", icon = icon("cogs"), class = "btn-primary", style = "color: #fff;")
                     ),
-                    
+
                     box(
                         h3("Results"),
                         conditionalPanel(
@@ -317,7 +326,7 @@ dashboardPage(
                             p("Variables used: ", uiOutput("randomForestVarsText")),
                             p(span("Number of variables randomly sampled at each split: ", textOutput("randomForestMtryText", inline = TRUE))),
                             p(span("Number of cross validation folds: ", textOutput("randomForestCvFoldsText", inline = TRUE))),
-                        
+
                             h4("Accuracy"),
                             p("Cross-validation accuracy: ", textOutput("randomForestCvAccuracyText", inline = TRUE)),
                             p("Holdout test data accuracy: ", textOutput("randomForestTestAccuracyText", inline = TRUE)),
