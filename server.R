@@ -302,6 +302,20 @@ shinyServer(function(input, output, session) {
         df
     }, rownames = TRUE)
 
+    # Histogram/density
+    output$customDensityPlot <- renderPlotly({
+        # Handler for data download
+        output$downloadCustomDensityData <- get_download_handler(scores_df)
+
+        # Create plot
+        p <- ggplot(scores_df, aes_string(x = input$customSummaryTableVar)) +
+            geom_density(fill = "coral", color = "coral")
+
+        # View it with plotly
+        ggplotly(p) %>%
+            layout()
+    })
+
     # Variable 1 filter for custom plot
     updateSelectizeInput(session, "customSummaryTableVar",
                          choices = names(scores_df %>% select_if(is.numeric)))

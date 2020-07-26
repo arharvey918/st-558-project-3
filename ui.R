@@ -181,10 +181,15 @@ dashboardPage(
                     # 5-number summary
                     box(
                         width = 4,
-                        h4("Variable Summary"),
+                        h4("Variable Summary and Density"),
                         selectizeInput("customSummaryTableVar", "Variable", choices = c("Loading options...")),
                         tableOutput("customSummaryTable"),
-                        downloadButton("downloadCustomSummaryData", "Download Table Data")
+                        downloadButton("downloadCustomSummaryData", "Download Table Data"),
+
+                        hr(),
+
+                        plotlyOutput("customDensityPlot"),
+                        downloadButton("downloadCustomDensityData", "Download Plot Data"),
                     ),
 
                     # Scatterplot
