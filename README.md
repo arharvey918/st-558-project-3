@@ -1,8 +1,10 @@
 # st-558-project-3
 
+![NFL Data Analyzer Screenshot](screenshot.png?raw=true "NFL Data Analyzer Screenshot")
+
 ## About
 
-This is an R Shiny application created to do some rudimentary NFL data analysis. In the application, users can:
+This is an R Shiny application created to do some rudimentary NFL data analysis. In this web application, users can:
 
 * **View** the data in tabular format
 * **Explore** the data with interactive plots and create basic numeric and graphical summaries
@@ -34,7 +36,7 @@ install.packages(c("shiny", "shinydashboard", "plotly", "DT", "tidyverse", "care
 
 ### Run the App
 
-Run the application from GitHub using `shiny`:
+Run the application in R using `shiny`:
 
 ```r
 shiny::runGitHub("arharvey918/st-558-project-3")
