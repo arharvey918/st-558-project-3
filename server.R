@@ -12,6 +12,7 @@ library(shiny)
 library(tidyverse)
 library(DT)
 library(plotly)
+library(caret)
 
 # Function to prepare data and return it
 get_data <- function() {
@@ -362,6 +363,194 @@ shinyServer(function(input, output, session) {
             principal_components()$rotation
         }
     }, rownames = TRUE, options = list(scrollX = TRUE))
-
     
+    #################################
+    # SUPERVISED LEARNING OUTPUTS
+    #################################
+    
+    # Random forest reactive values
+    randomForestRvs <- reactiveValues(predictionMadeThisModel = FALSE)
+    
+    # Random forest training parameters
+    supervised_learning_vars <- names(select(scores_df, 
+                                             -matches("[A,H]Q[1-4]"),
+                                             -matches("[A,H]OT2?"),
+                                             -matches("[A,H]Final"),
+                                             -startTime,
+                                             -duration,
+                                             -isFavoriteTheWinner,
+                                             -spread_diff,
+                                             -homeWin,
+                                             -awayWin,
+                                             -starts_with("season"),
+                                             -HminusAScore
+                                             ) %>% select_if(is.numeric))
+    
+    suggested_vars <- c("homeSpread", "homeYPA", "awayYPA", "homeYPC", "awayYPC", "homePlaysPerMinute", "awayPlaysPerMinute", "home3rdPct", "away3rdPct")
+    
+    updateSelectizeInput(session, "randomForestVars",
+                         choices = supervised_learning_vars)
+    
+    # Random forest: Use all variables button
+    observeEvent(input$randomForestUseAllVarsBtn, {
+        updateSelectizeInput(session, "randomForestVars",
+                             selected = supervised_learning_vars)
+    })
+    
+    # Random forest: Use suggested variables button
+    observeEvent(input$randomForestUseSuggestedVarsBtn, {
+        updateSelectizeInput(session, "randomForestVars",
+                             selected = suggested_vars)
+    })
+
+    randomForestTrainParamsMtry <- eventReactive(input$randomForestTrainButton, {
+        input$randomForestMtry
+    })
+    
+    randomForestTrainParamsVars <- eventReactive(input$randomForestTrainButton, {
+        input$randomForestVars
+    })
+    
+    randomForestTrainParamsCvFolds <- eventReactive(input$randomForestTrainButton, {
+        input$randomForestCvFolds
+    })
+    
+    output$randomForestCvFoldsText <- renderText(randomForestTrainParamsCvFolds())
+    
+    output$randomForestMtryText <- renderText({
+        randomForestTrainParamsMtry()
+    })
+    
+    output$randomForestVarsText <- renderUI({
+        tagList(
+            lapply(randomForestTrainParamsVars(), span, class="badge")
+        )
+    })
+    
+    # Random forest model builder
+    randomForestModel <- eventReactive(input$randomForestTrainButton, {
+        print("Model building...")
+        
+        # Flag that predict was not yet made for this model
+        randomForestRvs$predictionMadeThisModel <- FALSE
+        
+        get_test_accuracy <- function(model, testData) {
+            # Make predictions
+            preds <- predict(model, newdata = testData)
+            
+            # Create confusion matrix
+            confusion_matrix <- table(preds, testData$homeWin)
+            
+            # Return accuracy rate
+            sum(diag(confusion_matrix))/sum(confusion_matrix)
+        }
+        
+        df <- scores_df %>% select(randomForestTrainParamsVars(), homeWin) %>% mutate(homeWin = as.factor(homeWin))
+
+        # Set seed for reproducibility
+        set.seed(1)
+        
+        # Referenced code from caret vignette: https://topepo.github.io/caret/data-splitting.html
+        # Uses stratified random sampling
+        trainIndex <- createDataPartition(df$homeWin, p = .8, 
+                                          list = FALSE,
+                                          times = 1) %>%
+            as.vector()
+        
+        # Split into train and test
+        scoresTrain <- df[trainIndex,]
+        scoresTest  <- df[-trainIndex,]
+        
+        # Do repeated cross validation 3 times
+        train_control <- trainControl(method = "cv", number = input$randomForestCvFolds)
+        
+        # Build the random forest model using default tuning grid (mtry)
+        random_forest_fit <- train(homeWin ~ ., data = scoresTrain, method = "rf",
+                                   trControl=train_control,
+                                   tuneGrid = expand.grid(mtry = c(input$randomForestMtry)))
+        
+        
+        # Accuracy (cross-validation)
+        #random_forest_fit$results$Accuracy
+        
+        # Return model and test accuracy
+        print("Model building complete!")
+        list(model = random_forest_fit, 
+             test_accuracy = get_test_accuracy(random_forest_fit, scoresTest), 
+             vars = names(df %>% select(-homeWin)))
+    })
+    
+    output$randomForestModelCreated <- renderUI({
+        withProgress(message = 'Training random forest model',
+                     detail = 'This may take a few minutes...', value = 0, {
+                         incProgress(0.3)
+                         randomForestModel()
+                         incProgress(1)
+                     }
+        )
+        tags$div()
+    })
+    
+    output$randomForestCvAccuracyText <- renderText(randomForestModel()$model$results$Accuracy)
+    output$randomForestTestAccuracyText <- renderText(randomForestModel()$test_accuracy)
+
+    output$randomForestPredictionForm <- renderUI({
+        # Generate input
+        generate_input <- function(varname) {
+            column(width = 1, numericInput(paste0("randomForestPredVar_", varname), varname, value = NULL))
+        }
+        
+        fluidRow(
+            lapply(randomForestModel()$vars,
+                   generate_input)
+        )
+    })
+    
+    randomForestPredictionInputDf <- eventReactive(input$randomForestPredictButton, {
+        # Flag that predict was made for this model
+        randomForestRvs$predictionMadeThisModel <- TRUE
+        
+        # Get data from form
+        print("Harvesting output")
+        harvest_output <- function(varname) {
+            input[[paste0("randomForestPredVar_", varname)]]
+        }
+        
+        df <- lapply(randomForestModel()$vars,
+               harvest_output)
+        names(df) <- randomForestModel()$vars
+        df
+    })
+    
+    output$randomForestPredictionMade <- renderUI({
+        randomForestPredictionInputDf()
+        tags$div()
+    })
+    
+    output$randomForestPredictionInputTable <- renderTable({
+        # Short circuit if the prediction wasn't from the current model
+        if (!randomForestRvs$predictionMadeThisModel) {
+            return()
+        }
+        randomForestPredictionInputDf()
+    })
+    
+    output$randomForestPredictionOutput <- renderText({
+        # Short circuit if the prediction wasn't from the current model
+        if (!randomForestRvs$predictionMadeThisModel) {
+            return()
+        }
+        
+        prediction = predict(randomForestModel()$model, newdata = randomForestPredictionInputDf())
+        print(prediction)
+        if (prediction == "TRUE") {
+            return("Home team wins")
+        } else {
+            return("Home team does not win")
+        }
+    })
+    
+    # So that we can use it in conditionalPanel when it's not set or visible
+    outputOptions(output, "randomForestModelCreated", suspendWhenHidden = FALSE)
+    outputOptions(output, "randomForestPredictionMade", suspendWhenHidden = FALSE)
 })

@@ -237,25 +237,33 @@ dashboardPage(
                 fluidRow(
                     box(
                         h3("Training Parameters"),
-                        checkboxInput("randomForestUseAllVars", "Use all variables", value = TRUE),
-                        conditionalPanel("!input.randomForestUseAllVars",
-                            selectizeInput("randomForestVars", "Variables", choices = c("Loading options..."), multiple = TRUE),   
-                        ),
+                        actionButton("randomForestUseSuggestedVarsBtn", "Use Suggested Variables"),
+                        actionButton("randomForestUseAllVarsBtn", "Use All Variables"),
+                        selectizeInput("randomForestVars", "Variables", choices = c("Loading options..."), multiple = TRUE),   
                         sliderInput("randomForestMtry", "Number of variables to randomly sample at each split",
-                                    min = 1, max = 10, value = 5),
+                                    min = 1, max = 10, value = 3),
                         sliderInput("randomForestCvFolds", "Number of folds to use in cross validation",
                                     min = 3, max = 10, value = 3),
-                        actionButton("randomForestTrainButton", "Train Model", icon = icon("cogs"))
+                        actionButton("randomForestTrainButton", "Train Model", icon = icon("cogs"), class = "btn-primary", style = "color: #fff;")
                     ),
                     
                     box(
                         h3("Results"),
-                        p("Variables used"),
-                        #p(paste0("Number of variables randomly sampled at each split", textOutput("randomForestMtryText"))),
-                        textOutput("randomForestMtryText"),
-                        br(),
-                        p("n-fold cross-validation accuracy: 99.00%"),
-                        p("Holdout test data accuracy: 89.00%"),
+                        conditionalPanel(
+                            "!output.randomForestModelCreated",
+                            p("Train a model to see results.")
+                        ),
+                        conditionalPanel(
+                            "output.randomForestModelCreated",
+                            h4("Parameters"),
+                            p("Variables used: ", uiOutput("randomForestVarsText")),
+                            p(span("Number of variables randomly sampled at each split: ", textOutput("randomForestMtryText", inline = TRUE))),
+                            p(span("Number of cross validation folds: ", textOutput("randomForestCvFoldsText", inline = TRUE))),
+                        
+                            h4("Accuracy"),
+                            p("Cross-validation accuracy: ", textOutput("randomForestCvAccuracyText", inline = TRUE)),
+                            p("Holdout test data accuracy: ", textOutput("randomForestTestAccuracyText", inline = TRUE)),
+                        ),
                     )
                 ),
                 fluidRow(
@@ -263,9 +271,20 @@ dashboardPage(
                         width = 12,
                         h3("Predict New Data"),
                         p("You can make predictions in this area after a model has been trained."),
-                        p("table of spots to fill in data"),
-                        actionButton("randomForestTrainButton", "Make Prediction", icon = icon("magic")),
-                        p("Result")
+                        conditionalPanel(
+                            "output.randomForestModelCreated",
+                            uiOutput("randomForestPredictionForm"),
+                            actionButton("randomForestPredictButton", "Make Prediction", icon = icon("magic"), class = "btn-primary", style = "color: #fff;"),
+                            conditionalPanel(
+                                "output.randomForestPredictionMade",
+                                tags$hr(),
+                                h4("Prediction Result"),
+                                p("Predictors were:"),
+                                # Scroll-x: https://github.com/rstudio/shinydashboard/issues/40
+                                div(style = 'overflow-x: scroll', tableOutput("randomForestPredictionInputTable")),
+                                p("Prediction: ", textOutput("randomForestPredictionOutput", inline = TRUE))
+                            )
+                        )
                     )
                 ),
 

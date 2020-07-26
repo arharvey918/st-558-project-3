@@ -228,3 +228,81 @@ What strategy/metrics will result in a win?
   - Allow option for cross validation
 
 Can I beat the Vegas predictor with simple, pre-game metrics?
+
+```{r}
+library(caret)
+
+get_test_accuracy <- function(model, testData) {
+   # Make predictions
+  preds <- predict(model, newdata = testData)
+  
+  # Create confusion matrix
+  confusion_matrix <- table(preds, testData$homeWin)
+  
+  # Return accuracy rate
+  sum(diag(confusion_matrix))/sum(confusion_matrix)
+}
+
+supervised_learning_vars <- names(select(scores_df, 
+                                         -matches("[A,H]Q[1-4]"),
+                                         -matches("[A,H]OT2?"),
+                                         -matches("[A,H]Final"),
+                                         -startTime,
+                                         -duration,
+                                         -isFavoriteTheWinner,
+                                         -spread_diff,
+                                         #-homeWin,
+                                         -awayWin,
+                                         -starts_with("season"),
+                                         -HminusAScore
+                                         ))
+
+df <- scores_df %>% select(supervised_learning_vars) %>% mutate(homeWin = as.factor(homeWin))
+# Set seed for reproducibility
+set.seed(1)
+
+# Referenced code from caret vignette: https://topepo.github.io/caret/data-splitting.html
+# Uses stratified random sampling
+trainIndex <- createDataPartition(df$homeWin, p = .8, 
+                                  list = FALSE,
+                                  times = 1) %>%
+    as.vector()
+
+# Split into train and test
+scoresTrain <- df[trainIndex,]
+scoresTest  <- df[-trainIndex,]
+
+# Do repeated cross validation 3 times
+train_control <- trainControl(method = "cv", number = 3)
+
+# Build the random forest model using default tuning grid (mtry)
+random_forest_fit <- train(homeWin ~ ., data = scoresTrain, method = "rf",
+ trControl=train_control,
+ #preProcess = c("center", "scale"),
+ tuneGrid = expand.grid(mtry = c(7)))
+
+# Accuracy (cross-validation)
+random_forest_fit$results$Accuracy
+
+# Accuracy on holdout test data
+get_test_accuracy(random_forest_fit, scoresTest)
+
+# Do a prediction
+class(predict(random_forest_fit, newdata = scoresTest %>% head(1)))
+```
+```{r}
+# Generate input based on type
+# Reference: https://stackoverflow.com/a/9950217
+generate_input <- function(vtypes, index) {
+  if (vtypes[[index]] == "factor") {
+    textInput(paste0("randomForestPredVar_", names(vtypes)[[index]]), names(vtypes)[[index]], value = NULL)
+  } else if (vtypes[[index]] == "numeric") {
+    numericInput(paste0("randomForestPredVar_", names(vtypes)[[index]]), names(vtypes)[[index]], value = NULL)
+  }
+}
+
+var_types <- lapply(df, class)
+
+lapply(seq_along(var_types), generate_input, vtypes = var_types)
+```
+
