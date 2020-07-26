@@ -268,7 +268,7 @@ dashboardPage(
                             "output.treeModelCreated",
                             h4("Parameters"),
                             p("Variables used: ", uiOutput("treeVarsText")),
-                            p(span("Number of variables randomly sampled at each split: ", textOutput("treeMtryText", inline = TRUE))),
+                            p(span("Complexity parameter for pruning: ", textOutput("treeCpText", inline = TRUE))),
                             p(span("Number of cross validation folds: ", textOutput("treeCvFoldsText", inline = TRUE))),
 
                             h4("Accuracy"),
