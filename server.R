@@ -663,7 +663,7 @@ shinyServer(function(input, output, session) {
                                    tuneGrid = expand.grid(mtry = c(input$randomForestMtry)))
 
         # Return model and test accuracy
-        print("Model building complete!")
+        print("RF Model building complete!")
         list(model = random_forest_fit,
              test_accuracy = get_test_accuracy(random_forest_fit, scoresTest),
              vars = names(df %>% select(-homeWin)))
