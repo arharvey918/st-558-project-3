@@ -325,4 +325,43 @@ shinyServer(function(input, output, session) {
     # Variable 2 filter for custom plot
     updateSelectizeInput(session, "customPlotVar2",
                          choices = names(scores_df))
+
+
+    #################################
+    # UNSUPERVISED LEARNING OUTPUTS
+    #################################
+    
+    # Variable filter for PCA
+    updateSelectizeInput(session, "pcaVars",
+                         choices = names(scores_df %>% select_if(is.numeric)))
+    
+    principal_components <- reactive({
+        if (length(input$pcaVars) >= 2) {
+            prcomp(select(scores_df, input$pcaVars), scale = input$pcaVarsScale)
+        } else {
+            NULL
+        }
+    })
+    
+    output$pcaPlot <- renderPlot({
+        if (length(input$pcaVars) >= 2) {
+            # Handler for data download
+            output$downloadPcaPlotData <- get_download_handler(principal_components()$x)
+            
+            # Create plot
+            biplot(principal_components(), xlabs = rep(".", nrow(scores_df)), cex = 1)
+        }
+    })
+    
+    output$pcaRotationTable <- renderDataTable({
+        if (length(input$pcaVars) >= 2) {
+            # Handler for data download
+            output$downloadPcaRotationData <- get_download_handler(principal_components()$rotation)
+            
+            # Return the data
+            principal_components()$rotation
+        }
+    }, rownames = TRUE, options = list(scrollX = TRUE))
+
+    
 })

@@ -194,13 +194,85 @@ dashboardPage(
             ### Unsupervised learning content ###
             tabItem(
                 tabName = "unsupervised-learning",
-                h2("Unsupervised learning content")
+                h2("Principal Components Analysis"),
+                p("Create a biplot of the principal components by selecting at least two numeric variables."),
+                fluidRow(
+                    box(
+                        width = 12,
+                        selectizeInput("pcaVars", "Variables", choices = c("Loading options..."), multiple = TRUE),
+                        checkboxInput("pcaVarsScale", "Scale variables to have unit variance", value = TRUE)
+                    )
+                ),
+                fluidRow(
+                    box(
+                        h3("Biplot"),
+                        conditionalPanel("input.pcaVars.length < 2",
+                                         p("Select at least two variables to see the biplot.")
+                        ),
+                        conditionalPanel("input.pcaVars.length >= 2",
+                                         plotOutput("pcaPlot"),
+                                         downloadButton("downloadPcaPlotData", "Download Plot Data")
+                        )
+                    ),
+                    
+                    box(
+                        h3("Variable Loadings"),
+                        conditionalPanel("input.pcaVars.length < 2",
+                                         p("Select at least two variables to see the PCA variable loadings.")
+                        ),
+                        conditionalPanel("input.pcaVars.length >= 2",
+                                         dataTableOutput("pcaRotationTable"),
+                                         downloadButton("downloadPcaRotationData", "Download Table Data")
+                        )
+                    )
+                )
             ),
             
             ### Supervised learning content ###
             tabItem(
                 tabName = "supervised-learning",
-                h2("Build models content")
+                h2("Build Models"),
+                p("On this page, you can build machine learning models to make predictions about whether a team will win or not based on certain predictor variables. Note that any variables in the data that are outcome-related, such as `homeWin`, `HminusAScore`, `spreadDiff`, and others are not included in the available variables list."),
+                h2("Random Forest"),
+                fluidRow(
+                    box(
+                        h3("Training Parameters"),
+                        checkboxInput("randomForestUseAllVars", "Use all variables", value = TRUE),
+                        conditionalPanel("!input.randomForestUseAllVars",
+                            selectizeInput("randomForestVars", "Variables", choices = c("Loading options..."), multiple = TRUE),   
+                        ),
+                        sliderInput("randomForestMtry", "Number of variables to randomly sample at each split",
+                                    min = 1, max = 10, value = 5),
+                        sliderInput("randomForestCvFolds", "Number of folds to use in cross validation",
+                                    min = 3, max = 10, value = 3),
+                        actionButton("randomForestTrainButton", "Train Model", icon = icon("cogs"))
+                    ),
+                    
+                    box(
+                        h3("Results"),
+                        p("Variables used"),
+                        #p(paste0("Number of variables randomly sampled at each split", textOutput("randomForestMtryText"))),
+                        textOutput("randomForestMtryText"),
+                        br(),
+                        p("n-fold cross-validation accuracy: 99.00%"),
+                        p("Holdout test data accuracy: 89.00%"),
+                    )
+                ),
+                fluidRow(
+                    box(
+                        width = 12,
+                        h3("Predict New Data"),
+                        p("You can make predictions in this area after a model has been trained."),
+                        p("table of spots to fill in data"),
+                        actionButton("randomForestTrainButton", "Make Prediction", icon = icon("magic")),
+                        p("Result")
+                    )
+                ),
+
+                h2("Boosting"),
+                h3("Model Training"),
+                h3("Results"),
+                h3("Predict New Data"),
             )
         )
     )
