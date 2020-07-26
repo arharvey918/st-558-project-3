@@ -290,19 +290,23 @@ get_test_accuracy(random_forest_fit, scoresTest)
 # Do a prediction
 class(predict(random_forest_fit, newdata = scoresTest %>% head(1)))
 ```
+
 ```{r}
-# Generate input based on type
-# Reference: https://stackoverflow.com/a/9950217
-generate_input <- function(vtypes, index) {
-  if (vtypes[[index]] == "factor") {
-    textInput(paste0("randomForestPredVar_", names(vtypes)[[index]]), names(vtypes)[[index]], value = NULL)
-  } else if (vtypes[[index]] == "numeric") {
-    numericInput(paste0("randomForestPredVar_", names(vtypes)[[index]]), names(vtypes)[[index]], value = NULL)
-  }
-}
+# Set seed for reproducibility
+set.seed(1)
 
-var_types <- lapply(df, class)
+# Build the classification tree model using default tuning grid (cp)
+tree_fit <- train(homeWin ~ ., data = scoresTrain, method = "rpart",
+ trControl=train_control,
+ #preProcess = c("center", "scale"),
+)
 
-lapply(seq_along(var_types), generate_input, vtypes = var_types)
+# Accuracy (cross-validation)
+tree_fit$results$Accuracy
+
+# Accuracy on holdout test data
+get_test_accuracy(tree_fit, scoresTest)
+
+# Do a prediction
+predict(tree_fit, newdata = scoresTest %>% head(1))
 ```
-

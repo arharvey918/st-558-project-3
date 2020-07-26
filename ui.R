@@ -233,6 +233,64 @@ dashboardPage(
                 tabName = "supervised-learning",
                 h2("Build Models"),
                 p("On this page, you can build machine learning models to make predictions about whether a team will win or not based on certain predictor variables. Note that any variables in the data that are outcome-related, such as `homeWin`, `HminusAScore`, `spreadDiff`, and others are not included in the available variables list."),
+                
+                # Classification tree
+                h2("Classification Tree"),
+                fluidRow(
+                    box(
+                        h3("Training Parameters"),
+                        actionButton("treeUseSuggestedVarsBtn", "Use Suggested Variables"),
+                        actionButton("treeUseAllVarsBtn", "Use All Variables"),
+                        selectizeInput("treeVars", "Variables", choices = c("Loading options..."), multiple = TRUE),   
+                        numericInput("treeCp", "Complexity parameter for pruning",
+                                     min = 0, value = 0.02),
+                        sliderInput("treeCvFolds", "Number of folds to use in cross validation",
+                                    min = 3, max = 10, value = 3),
+                        actionButton("treeTrainButton", "Train Model", icon = icon("cogs"), class = "btn-primary", style = "color: #fff;")
+                    ),
+                    
+                    box(
+                        h3("Results"),
+                        conditionalPanel(
+                            "!output.treeModelCreated",
+                            p("Train a model to see results.")
+                        ),
+                        conditionalPanel(
+                            "output.treeModelCreated",
+                            h4("Parameters"),
+                            p("Variables used: ", uiOutput("treeVarsText")),
+                            p(span("Number of variables randomly sampled at each split: ", textOutput("treeMtryText", inline = TRUE))),
+                            p(span("Number of cross validation folds: ", textOutput("treeCvFoldsText", inline = TRUE))),
+                            
+                            h4("Accuracy"),
+                            p("Cross-validation accuracy: ", textOutput("treeCvAccuracyText", inline = TRUE)),
+                            p("Holdout test data accuracy: ", textOutput("treeTestAccuracyText", inline = TRUE)),
+                        ),
+                    )
+                ),
+                fluidRow(
+                    box(
+                        width = 12,
+                        h3("Predict New Data"),
+                        p("You can make predictions in this area after a model has been trained."),
+                        conditionalPanel(
+                            "output.treeModelCreated",
+                            uiOutput("treePredictionForm"),
+                            actionButton("treePredictButton", "Make Prediction", icon = icon("magic"), class = "btn-primary", style = "color: #fff;"),
+                            conditionalPanel(
+                                "output.treePredictionMade",
+                                tags$hr(),
+                                h4("Prediction Result"),
+                                p("Predictors were:"),
+                                # Scroll-x: https://github.com/rstudio/shinydashboard/issues/40
+                                div(style = 'overflow-x: auto', tableOutput("treePredictionInputTable")),
+                                p("Prediction: ", strong(textOutput("treePredictionOutput", inline = TRUE)))
+                            )
+                        )
+                    )
+                ),
+
+                # Random Forest
                 h2("Random Forest"),
                 fluidRow(
                     box(
@@ -281,17 +339,12 @@ dashboardPage(
                                 h4("Prediction Result"),
                                 p("Predictors were:"),
                                 # Scroll-x: https://github.com/rstudio/shinydashboard/issues/40
-                                div(style = 'overflow-x: scroll', tableOutput("randomForestPredictionInputTable")),
-                                p("Prediction: ", textOutput("randomForestPredictionOutput", inline = TRUE))
+                                div(style = 'overflow-x: auto', tableOutput("randomForestPredictionInputTable")),
+                                p("Prediction: ", strong(textOutput("randomForestPredictionOutput", inline = TRUE)))
                             )
                         )
                     )
-                ),
-
-                h2("Boosting"),
-                h3("Model Training"),
-                h3("Results"),
-                h3("Predict New Data"),
+                )
             )
         )
     )

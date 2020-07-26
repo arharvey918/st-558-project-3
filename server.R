@@ -368,10 +368,8 @@ shinyServer(function(input, output, session) {
     # SUPERVISED LEARNING OUTPUTS
     #################################
     
-    # Random forest reactive values
-    randomForestRvs <- reactiveValues(predictionMadeThisModel = FALSE)
     
-    # Random forest training parameters
+    # Training variables
     supervised_learning_vars <- names(select(scores_df, 
                                              -matches("[A,H]Q[1-4]"),
                                              -matches("[A,H]OT2?"),
@@ -387,7 +385,179 @@ shinyServer(function(input, output, session) {
                                              ) %>% select_if(is.numeric))
     
     suggested_vars <- c("homeSpread", "homeYPA", "awayYPA", "homeYPC", "awayYPC", "homePlaysPerMinute", "awayPlaysPerMinute", "home3rdPct", "away3rdPct")
+
     
+    ### CLASSIFICATION TREE STUFF
+    # Tree reactive values
+    treeRvs <- reactiveValues(predictionMadeThisModel = FALSE)
+    
+    updateSelectizeInput(session, "treeVars",
+                         choices = supervised_learning_vars)
+    
+    # Tree: Use all variables button
+    observeEvent(input$treeUseAllVarsBtn, {
+        updateSelectizeInput(session, "treeVars",
+                             selected = supervised_learning_vars)
+    })
+    
+    # Random forest: Use suggested variables button
+    observeEvent(input$treeUseSuggestedVarsBtn, {
+        updateSelectizeInput(session, "treeVars",
+                             selected = suggested_vars)
+    })
+    
+    treeTrainParamsCp <- eventReactive(input$treeTrainButton, {
+        input$treeCp
+    })
+    
+    treeTrainParamsVars <- eventReactive(input$treeTrainButton, {
+        input$treeVars
+    })
+    
+    treeTrainParamsCvFolds <- eventReactive(input$treeTrainButton, {
+        input$treeCvFolds
+    })
+    
+    output$treeCvFoldsText <- renderText(treeTrainParamsCvFolds())
+    
+    output$treeCpText <- renderText({
+        treeTrainParamsCp()
+    })
+    
+    output$treeVarsText <- renderUI({
+        tagList(
+            lapply(treeTrainParamsVars(), span, class="badge")
+        )
+    })
+    
+    # Random forest model builder
+    treeModel <- eventReactive(input$treeTrainButton, {
+        print("Model building...")
+        
+        # Flag that predict was not yet made for this model
+        treeRvs$predictionMadeThisModel <- FALSE
+        
+        get_test_accuracy <- function(model, testData) {
+            # Make predictions
+            preds <- predict(model, newdata = testData)
+            
+            # Create confusion matrix
+            confusion_matrix <- table(preds, testData$homeWin)
+            
+            # Return accuracy rate
+            sum(diag(confusion_matrix))/sum(confusion_matrix)
+        }
+        
+        df <- scores_df %>% select(treeTrainParamsVars(), homeWin) %>% mutate(homeWin = as.factor(homeWin))
+        
+        # Set seed for reproducibility
+        set.seed(1)
+        
+        # Referenced code from caret vignette: https://topepo.github.io/caret/data-splitting.html
+        # Uses stratified random sampling
+        trainIndex <- createDataPartition(df$homeWin, p = .8, 
+                                          list = FALSE,
+                                          times = 1) %>%
+            as.vector()
+        
+        # Split into train and test
+        scoresTrain <- df[trainIndex,]
+        scoresTest  <- df[-trainIndex,]
+        
+        # Do cross validation
+        train_control <- trainControl(method = "cv", number = input$treeCvFolds)
+        
+        # Build the random forest model using default tuning grid (mtry)
+        random_forest_fit <- train(homeWin ~ ., data = scoresTrain, method = "rpart",
+                                   trControl=train_control,
+                                   tuneGrid = expand.grid(cp = c(input$treeCp)))
+        
+        # Return model and test accuracy
+        print("Model building complete!")
+        list(model = random_forest_fit, 
+             test_accuracy = get_test_accuracy(random_forest_fit, scoresTest), 
+             vars = names(df %>% select(-homeWin)))
+    })
+    
+    output$treeModelCreated <- renderUI({
+        withProgress(message = 'Training classification tree model',
+                     detail = 'This may take a few minutes...', value = 0, {
+                         incProgress(0.3)
+                         treeModel()
+                         incProgress(1)
+                     }
+        )
+        tags$div()
+    })
+    
+    output$treeCvAccuracyText <- renderText(treeModel()$model$results$Accuracy)
+    output$treeTestAccuracyText <- renderText(treeModel()$test_accuracy)
+    
+    output$treePredictionForm <- renderUI({
+        # Generate input
+        generate_input <- function(varname) {
+            column(width = 1, numericInput(paste0("treePredVar_", varname), varname, value = NULL))
+        }
+        
+        fluidRow(
+            lapply(treeModel()$vars,
+                   generate_input)
+        )
+    })
+    
+    treePredictionInputDf <- eventReactive(input$treePredictButton, {
+        # Flag that predict was made for this model
+        treeRvs$predictionMadeThisModel <- TRUE
+        
+        # Get data from form
+        print("Harvesting output")
+        harvest_output <- function(varname) {
+            input[[paste0("treePredVar_", varname)]]
+        }
+        
+        df <- lapply(treeModel()$vars,
+                     harvest_output)
+        names(df) <- treeModel()$vars
+        df
+    })
+    
+    output$treePredictionMade <- renderUI({
+        treePredictionInputDf()
+        tags$div()
+    })
+    
+    output$treePredictionInputTable <- renderTable({
+        # Short circuit if the prediction wasn't from the current model
+        if (!treeRvs$predictionMadeThisModel) {
+            return()
+        }
+        treePredictionInputDf()
+    })
+    
+    output$treePredictionOutput <- renderText({
+        # Short circuit if the prediction wasn't from the current model
+        if (!treeRvs$predictionMadeThisModel) {
+            return()
+        }
+        
+        prediction = predict(treeModel()$model, newdata = treePredictionInputDf())
+        print(prediction)
+        if (prediction == "TRUE") {
+            return("Home team wins")
+        } else {
+            return("Home team does not win")
+        }
+    })
+    
+    # So that we can use it in conditionalPanel when it's not set or visible
+    outputOptions(output, "treeModelCreated", suspendWhenHidden = FALSE)
+    outputOptions(output, "treePredictionMade", suspendWhenHidden = FALSE)
+
+
+    ### RANDOM FOREST STUFF
+    # Random forest reactive values
+    randomForestRvs <- reactiveValues(predictionMadeThisModel = FALSE)
+        
     updateSelectizeInput(session, "randomForestVars",
                          choices = supervised_learning_vars)
     
